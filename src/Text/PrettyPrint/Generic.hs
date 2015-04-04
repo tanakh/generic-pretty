@@ -108,8 +108,13 @@ instance Pretty Int64   where prettyPrec _ = text . show
 
 instance {-# OVERLAPPABLE #-} Pretty a => Pretty [a] where
   prettyPrec _ = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty
+
 instance {-# OVERLAPPING #-} Pretty String where
-  prettyPrec p = text . show
+  prettyPrec _ = dquotes . text . prettyString where
+    prettyString cs = foldr ((.) . prettyChar) id cs ""
+    prettyChar c
+      | fromEnum c < 0x80 = showChar c
+      | otherwise = (c:)
 
 instance (Pretty a, Pretty b) => Pretty (a, b) where
   prettyPrec _ (a, b) = parens $ pretty a <> comma <+> pretty b
