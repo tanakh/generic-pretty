@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -15,10 +16,15 @@ module Text.PrettyPrint.Generic (
 
 import           Control.Applicative          (Const, WrappedArrow,
                                                WrappedMonad, ZipList)
+import qualified Data.ByteString.Char8        as S
+import qualified Data.ByteString.Lazy.Char8   as L
 import           Data.Functor.Identity        (Identity)
 import           Data.Int
 import           Data.Monoid                  (All, Alt, Any, First, Last,
                                                Product, Sum)
+import qualified Data.Text                    as T
+import qualified Data.Text.Encoding           as T
+import qualified Data.Text.Lazy               as TL
 import           Data.Word
 import           GHC.Generics
 import           Text.PrettyPrint.ANSI.Leijen hiding (Pretty (..))
@@ -125,6 +131,22 @@ instance Pretty a => Pretty (ZipList a)
 instance Pretty (m a) => Pretty (WrappedMonad m a)
 instance Pretty (a b c) => Pretty (WrappedArrow a b c)
 
+-- bytestrings, texts
+
+instance Pretty S.ByteString where
+  pretty bs = case T.decodeUtf8' bs of
+    Left err -> pretty $ show err
+    Right t -> pretty t
+
+instance Pretty T.Text where
+  pretty = pretty . T.unpack
+
+instance Pretty L.ByteString where
+  pretty = pretty . L.toStrict
+
+instance Pretty TL.Text where
+  pretty = pretty . TL.toStrict
+
 -- tests
 
 data Foo = Foo { fooA :: Int, fooB :: String } deriving Generic
@@ -141,10 +163,15 @@ test = do
   putStrLn $ showPretty (2^100 :: Integer)
   putStrLn $ showPretty (pi :: Float)
   putStrLn $ showPretty (pi :: Double)
-  putStrLn $ showPretty "Hello"
+  putStrLn $ showPretty ("Hello" :: String)
   putStrLn $ showPretty True
   putStrLn $ showPretty ([1..5] :: [Int])
   putStrLn $ showPretty ([1..10] :: [Int])
+
+  putStrLn $ showPretty (T.encodeUtf8 "日本語" :: S.ByteString)
+  putStrLn $ showPretty (L.fromStrict $ T.encodeUtf8 "日本語" :: L.ByteString)
+  putStrLn $ showPretty ("日本語" :: T.Text)
+  putStrLn $ showPretty ("日本語" :: TL.Text)
 
   putStrLn $ showPretty ('a', 'b')
   putStrLn $ showPretty ('a', 'b', 'c')
