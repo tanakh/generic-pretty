@@ -1,8 +1,8 @@
 name:                generic-pretty
-version:             0.1.0.0
-synopsis:            Pretty Printing for Generic
--- description:         
-homepage:            http://tanakh.jp
+version:             0.1.0
+synopsis:            Pretty printing for Generic value
+description:         Pretty printing for Generic value. For more detail, please refer to <https://github.com/tanakh/generic-pretty>.
+homepage:            https://github.com/tanakh/generic-pretty
 license:             MIT
 license-file:        LICENSE
 author:              Hideyuki Tanaka
@@ -13,6 +13,10 @@ build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.10
 
+source-repository head
+  type:                git
+  location:            https://github.com/tanakh/generic-pretty.git
+
 library
   exposed-modules:     Text.PrettyPrint.Generic
   -- other-modules:       
@@ -20,7 +24,7 @@ library
   build-depends:       base >=4.8 && <4.9
                      , ansi-wl-pprint
                      , bytestring >=0.10
-                     , containers >= 0.5.6
+                     , containers >=0.5.6
                      , text >=1.2
                      , vector >=0.10
   hs-source-dirs:      src
