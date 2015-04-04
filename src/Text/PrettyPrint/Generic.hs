@@ -1,5 +1,4 @@
 {-# LANGUAGE DefaultSignatures    #-}
-{-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedLists      #-}
@@ -81,8 +80,8 @@ instance (GPretty f, Constructor c) => GPretty (C1 c f) where
     | conIsRecord c =
       [ con <+> encloseSep (lbrace <> space) (space <> rbrace) (comma <> space) es ]
     | null es      = [ con ]
-    | p == 0       = [ con <+> sep es ]
-    | otherwise    = [ parens $ con <+> sep es ]
+    | p == 0       = [ con <+> align (sep es) ]
+    | otherwise    = [ parens $ con <+> align (sep es) ]
     where
       con = constructorS $ text (conName c)
       es = gprettyPrec (p + 1) a
@@ -263,60 +262,3 @@ instance (Pretty a, VS.Storable a) => Pretty (VS.Vector a) where
 
 instance (Pretty a, VU.Unbox a) => Pretty (VU.Vector a) where
   prettyPrec _ = pretty . toList
-
--- tests
-
-data Foo = Foo { fooA :: Int, fooB :: String } deriving Generic
-instance Pretty Foo
-
-data Bar a = Bar { barA :: Foo, barB :: a } deriving Generic
-instance Pretty a => Pretty (Bar a)
-
-test :: IO ()
-test = do
-  prettyPrint ()
-  prettyPrint 'a'
-  prettyPrint (123 :: Int)
-  prettyPrint (2^100 :: Integer)
-  prettyPrint (pi :: Float)
-  prettyPrint (pi :: Double)
-  prettyPrint ("Hello" :: String)
-  prettyPrint True
-
-  prettyPrint (123 % 456 :: Rational)
-  prettyPrint (123 :+ 456 :: Complex Double)
-
-  prettyPrint ([1..5] :: [Int])
-  prettyPrint ([1..10] :: [Int])
-
-  prettyPrint ('a', 'b')
-  prettyPrint ('a', 'b', 'c')
-  prettyPrint ('a', 'b', 'c', 'd')
-  prettyPrint ('a', 'b', 'c', 'd', 'e')
-  prettyPrint ('a', 'b', 'c', 'd', 'e', 'f')
-  prettyPrint ('a', 'b', 'c', 'd', 'e', 'f', 'g')
-
-  prettyPrint (Nothing :: Maybe Int)
-  prettyPrint (Just 123 :: Maybe Int)
-  prettyPrint (Just (Just 1) :: Maybe (Maybe Int))
-  prettyPrint (Left "Left" :: Either String Double)
-  prettyPrint (Right pi :: Either String Double)
-
-  prettyPrint (T.encodeUtf8 "日本語" :: S.ByteString)
-  prettyPrint (L.fromStrict $ T.encodeUtf8 "日本語" :: L.ByteString)
-  prettyPrint ("日本語" :: T.Text)
-  prettyPrint ("日本語" :: TL.Text)
-
-  prettyPrint (["foo", "bar", "baz"] :: Set.Set String)
-  prettyPrint ([1..5] :: IntSet.IntSet)
-  prettyPrint ([("foo", 123), ("bar", 456)] :: Map.Map String Int)
-  prettyPrint ([(123, "foo"), (456, "bar")] :: IntMap.IntMap String)
-  prettyPrint ([1..5] :: Seq.Seq Int)
-
-  prettyPrint ([1..5] :: V.Vector Int)
-  prettyPrint ([1..5] :: VP.Vector Int)
-  prettyPrint ([1..5] :: VS.Vector Int)
-  prettyPrint ([1..5] :: VU.Vector Int)
-
-  prettyPrint (Foo 123 "foo")
-  prettyPrint (Bar (Foo 123 "foo") (Just True))
