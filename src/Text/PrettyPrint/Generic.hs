@@ -12,11 +12,14 @@
 module Text.PrettyPrint.Generic (
   Pretty(..),
   GPretty(..),
-  pretty, showPretty,
+
+  pretty, prettyShow, prettyPrint, hPrettyPrint,
+  pretty', prettyShow', prettyPrint', hPrettyPrint',
   ) where
 
 import           GHC.Exts                     (IsList (..))
 import           GHC.Generics
+import           System.IO
 import           Text.PrettyPrint.ANSI.Leijen hiding (Pretty (..))
 
 import           Control.Applicative          (Const, WrappedArrow,
@@ -81,11 +84,33 @@ class Pretty a where
   default prettyPrec :: (Generic a, GPretty (Rep a)) => Int -> a -> Doc
   prettyPrec p = sep . gprettyPrec p . from
 
+-- utility functions
+
 pretty :: Pretty a => a -> Doc
 pretty = prettyPrec 0
 
-showPretty :: Pretty a => a -> String
-showPretty = show . pretty
+prettyShow :: Pretty a => a -> String
+prettyShow = show . pretty
+
+prettyPrint :: Pretty a => a -> IO ()
+prettyPrint = hPrettyPrint stdout
+
+hPrettyPrint :: Pretty a => Handle -> a -> IO ()
+hPrettyPrint h = hPutDoc h . (<> hardline) . pretty
+
+pretty' :: Pretty a => a -> Doc
+pretty' = plain . pretty
+
+prettyShow' :: Pretty a => a -> String
+prettyShow' = show . pretty'
+
+prettyPrint' :: Pretty a => a -> IO ()
+prettyPrint' = hPrettyPrint' stdout
+
+hPrettyPrint' :: Pretty a => Handle -> a -> IO ()
+hPrettyPrint' h = hPutDoc h . (<> hardline) . pretty'
+
+-- instances
 
 instance Pretty ()      where prettyPrec _ = text . show
 instance Pretty Char    where prettyPrec _ = text . show
@@ -194,40 +219,40 @@ instance Pretty a => Pretty (Bar a)
 
 test :: IO ()
 test = do
-  putStrLn $ showPretty ()
-  putStrLn $ showPretty 'a'
-  putStrLn $ showPretty (123 :: Int)
-  putStrLn $ showPretty (2^100 :: Integer)
-  putStrLn $ showPretty (pi :: Float)
-  putStrLn $ showPretty (pi :: Double)
-  putStrLn $ showPretty ("Hello" :: String)
-  putStrLn $ showPretty True
-  putStrLn $ showPretty ([1..5] :: [Int])
-  putStrLn $ showPretty ([1..10] :: [Int])
+  prettyPrint ()
+  prettyPrint 'a'
+  prettyPrint (123 :: Int)
+  prettyPrint (2^100 :: Integer)
+  prettyPrint (pi :: Float)
+  prettyPrint (pi :: Double)
+  prettyPrint ("Hello" :: String)
+  prettyPrint True
+  prettyPrint ([1..5] :: [Int])
+  prettyPrint ([1..10] :: [Int])
 
-  putStrLn $ showPretty ('a', 'b')
-  putStrLn $ showPretty ('a', 'b', 'c')
-  putStrLn $ showPretty ('a', 'b', 'c', 'd')
-  putStrLn $ showPretty ('a', 'b', 'c', 'd', 'e')
-  putStrLn $ showPretty ('a', 'b', 'c', 'd', 'e', 'f')
-  putStrLn $ showPretty ('a', 'b', 'c', 'd', 'e', 'f', 'g')
+  prettyPrint ('a', 'b')
+  prettyPrint ('a', 'b', 'c')
+  prettyPrint ('a', 'b', 'c', 'd')
+  prettyPrint ('a', 'b', 'c', 'd', 'e')
+  prettyPrint ('a', 'b', 'c', 'd', 'e', 'f')
+  prettyPrint ('a', 'b', 'c', 'd', 'e', 'f', 'g')
 
-  putStrLn $ showPretty (Nothing :: Maybe Int)
-  putStrLn $ showPretty (Just 123 :: Maybe Int)
-  putStrLn $ showPretty (Just (Just 1) :: Maybe (Maybe Int))
-  putStrLn $ showPretty (Left "Left" :: Either String Double)
-  putStrLn $ showPretty (Right pi :: Either String Double)
+  prettyPrint (Nothing :: Maybe Int)
+  prettyPrint (Just 123 :: Maybe Int)
+  prettyPrint (Just (Just 1) :: Maybe (Maybe Int))
+  prettyPrint (Left "Left" :: Either String Double)
+  prettyPrint (Right pi :: Either String Double)
 
-  putStrLn $ showPretty (T.encodeUtf8 "日本語" :: S.ByteString)
-  putStrLn $ showPretty (L.fromStrict $ T.encodeUtf8 "日本語" :: L.ByteString)
-  putStrLn $ showPretty ("日本語" :: T.Text)
-  putStrLn $ showPretty ("日本語" :: TL.Text)
+  prettyPrint (T.encodeUtf8 "日本語" :: S.ByteString)
+  prettyPrint (L.fromStrict $ T.encodeUtf8 "日本語" :: L.ByteString)
+  prettyPrint ("日本語" :: T.Text)
+  prettyPrint ("日本語" :: TL.Text)
 
-  putStrLn $ showPretty (["foo", "bar", "baz"] :: Set.Set String)
-  putStrLn $ showPretty ([1..5] :: IntSet.IntSet)
-  putStrLn $ showPretty ([("foo", 123), ("bar", 456)] :: Map.Map String Int)
-  putStrLn $ showPretty ([(123, "foo"), (456, "bar")] :: IntMap.IntMap String)
-  putStrLn $ showPretty ([1..5] :: Seq.Seq Int)
+  prettyPrint (["foo", "bar", "baz"] :: Set.Set String)
+  prettyPrint ([1..5] :: IntSet.IntSet)
+  prettyPrint ([("foo", 123), ("bar", 456)] :: Map.Map String Int)
+  prettyPrint ([(123, "foo"), (456, "bar")] :: IntMap.IntMap String)
+  prettyPrint ([1..5] :: Seq.Seq Int)
 
-  putStrLn $ showPretty (Foo 123 "foo")
-  putStrLn $ showPretty (Bar (Foo 123 "foo") (Just True))
+  prettyPrint (Foo 123 "foo")
+  prettyPrint (Bar (Foo 123 "foo") (Just True))
