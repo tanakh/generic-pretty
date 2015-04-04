@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedLists      #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -14,20 +15,27 @@ module Text.PrettyPrint.Generic (
   showPretty,
   ) where
 
+import           GHC.Exts                     (IsList (..))
+import           GHC.Generics
+import           Text.PrettyPrint.ANSI.Leijen hiding (Pretty (..))
+
 import           Control.Applicative          (Const, WrappedArrow,
                                                WrappedMonad, ZipList)
 import qualified Data.ByteString.Char8        as S
 import qualified Data.ByteString.Lazy.Char8   as L
 import           Data.Functor.Identity        (Identity)
 import           Data.Int
+import qualified Data.IntMap                  as IntMap
+import qualified Data.IntSet                  as IntSet
+import qualified Data.Map                     as Map
 import           Data.Monoid                  (All, Alt, Any, First, Last,
                                                Product, Sum)
+import qualified Data.Sequence                as Seq
+import qualified Data.Set                     as Set
 import qualified Data.Text                    as T
 import qualified Data.Text.Encoding           as T
 import qualified Data.Text.Lazy               as TL
 import           Data.Word
-import           GHC.Generics
-import           Text.PrettyPrint.ANSI.Leijen hiding (Pretty (..))
 
 class GPretty f where
   gpretty :: f a -> [Doc]
@@ -147,6 +155,24 @@ instance Pretty L.ByteString where
 instance Pretty TL.Text where
   pretty = pretty . TL.toStrict
 
+-- containers
+
+instance (Pretty a, Ord a) => Pretty (Set.Set a) where
+  pretty = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty . toList
+
+instance Pretty IntSet.IntSet where
+  pretty = pretty . Set.fromList . toList
+
+instance (Pretty a, Pretty b, Ord a) => Pretty (Map.Map a b) where
+  pretty = encloseSep (lbrace <> space) (space <> rbrace) (comma <> space) . map f . toList where
+    f (key, val) = pretty key <> colon <+> pretty val
+
+instance Pretty b => Pretty (IntMap.IntMap b) where
+  pretty = pretty . Map.fromList . toList
+
+instance Pretty a => Pretty (Seq.Seq a) where
+  pretty = pretty . toList
+
 -- tests
 
 data Foo = Foo { fooA :: Int, fooB :: String } deriving Generic
@@ -168,11 +194,6 @@ test = do
   putStrLn $ showPretty ([1..5] :: [Int])
   putStrLn $ showPretty ([1..10] :: [Int])
 
-  putStrLn $ showPretty (T.encodeUtf8 "日本語" :: S.ByteString)
-  putStrLn $ showPretty (L.fromStrict $ T.encodeUtf8 "日本語" :: L.ByteString)
-  putStrLn $ showPretty ("日本語" :: T.Text)
-  putStrLn $ showPretty ("日本語" :: TL.Text)
-
   putStrLn $ showPretty ('a', 'b')
   putStrLn $ showPretty ('a', 'b', 'c')
   putStrLn $ showPretty ('a', 'b', 'c', 'd')
@@ -184,6 +205,17 @@ test = do
   putStrLn $ showPretty (Just (Just 1) :: Maybe (Maybe Int))
   putStrLn $ showPretty (Left "Left" :: Either String Double)
   putStrLn $ showPretty (Right pi :: Either String Double)
+
+  putStrLn $ showPretty (T.encodeUtf8 "日本語" :: S.ByteString)
+  putStrLn $ showPretty (L.fromStrict $ T.encodeUtf8 "日本語" :: L.ByteString)
+  putStrLn $ showPretty ("日本語" :: T.Text)
+  putStrLn $ showPretty ("日本語" :: TL.Text)
+
+  putStrLn $ showPretty (["foo", "bar", "baz"] :: Set.Set String)
+  putStrLn $ showPretty ([1..5] :: IntSet.IntSet)
+  putStrLn $ showPretty ([("foo", 123), ("bar", 456)] :: Map.Map String Int)
+  putStrLn $ showPretty ([(123, "foo"), (456, "bar")] :: IntMap.IntMap String)
+  putStrLn $ showPretty ([1..5] :: Seq.Seq Int)
 
   putStrLn $ showPretty (Foo 123 "foo")
   putStrLn $ showPretty (Bar (Foo 123 "foo") (Just True))
