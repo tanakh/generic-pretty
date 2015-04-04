@@ -30,4 +30,4 @@ Bar { barA = Foo { fooA = 123
 By default, `generic-pretty` prints highlighted values.
 If you do not want this behavior, you can use plain version of pretty printer.
 
-[highlighted](https://raw.githubusercontent.com/tanakh/generic-pretty/master/img/terminal.png)
+![highligthed](https://raw.githubusercontent.com/tanakh/generic-pretty/master/img/terminal.png)
