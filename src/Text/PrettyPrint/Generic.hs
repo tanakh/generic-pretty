@@ -42,16 +42,20 @@ import qualified Data.Set                     as Set
 import qualified Data.Text                    as T
 import qualified Data.Text.Encoding           as T
 import qualified Data.Text.Lazy               as TL
+import qualified Data.Vector                  as V
+import qualified Data.Vector.Primitive        as VP
+import qualified Data.Vector.Storable         as VS
+import qualified Data.Vector.Unboxed          as VU
 import           Data.Word
 
 -- Color scheme
 
 constructorS, numericS, stringS, operatorS, selectorS :: Doc -> Doc
 constructorS = underline . bold . dullgreen
-numericS = magenta
-stringS = dullyellow
-operatorS = dullred
-selectorS = blue
+numericS     = magenta
+stringS      = dullyellow
+operatorS    = dullred
+selectorS    = blue
 
 -- Generic function
 
@@ -246,6 +250,20 @@ instance Pretty b => Pretty (IntMap.IntMap b) where
 instance Pretty a => Pretty (Seq.Seq a) where
   prettyPrec _ = pretty . toList
 
+-- vectors
+
+instance Pretty a => Pretty (V.Vector a) where
+  prettyPrec _ = pretty . toList
+
+instance (Pretty a, VP.Prim a) => Pretty (VP.Vector a) where
+  prettyPrec _ = pretty . toList
+
+instance (Pretty a, VS.Storable a) => Pretty (VS.Vector a) where
+  prettyPrec _ = pretty . toList
+
+instance (Pretty a, VU.Unbox a) => Pretty (VU.Vector a) where
+  prettyPrec _ = pretty . toList
+
 -- tests
 
 data Foo = Foo { fooA :: Int, fooB :: String } deriving Generic
@@ -294,6 +312,11 @@ test = do
   prettyPrint ([("foo", 123), ("bar", 456)] :: Map.Map String Int)
   prettyPrint ([(123, "foo"), (456, "bar")] :: IntMap.IntMap String)
   prettyPrint ([1..5] :: Seq.Seq Int)
+
+  prettyPrint ([1..5] :: V.Vector Int)
+  prettyPrint ([1..5] :: VP.Vector Int)
+  prettyPrint ([1..5] :: VS.Vector Int)
+  prettyPrint ([1..5] :: VU.Vector Int)
 
   prettyPrint (Foo 123 "foo")
   prettyPrint (Bar (Foo 123 "foo") (Just True))
