@@ -7,13 +7,15 @@
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- | Pretty Printing for Generic
+-- | Pretty printing for Generic data types
 
 module Text.PrettyPrint.Generic (
+  -- * Type classes
   Pretty(..),
   GPretty(..),
 
-  pretty, prettyShow, prettyPrint, hPrettyPrint,
+  -- * Utility functions
+  pretty,  prettyShow,  prettyPrint,  hPrettyPrint,
   pretty', prettyShow', prettyPrint', hPrettyPrint',
   ) where
 
@@ -26,6 +28,7 @@ import           Control.Applicative          (Const, WrappedArrow,
                                                WrappedMonad, ZipList)
 import qualified Data.ByteString.Char8        as S
 import qualified Data.ByteString.Lazy.Char8   as L
+import           Data.Complex
 import           Data.Functor.Identity        (Identity)
 import           Data.Int
 import qualified Data.IntMap                  as IntMap
@@ -33,6 +36,7 @@ import qualified Data.IntSet                  as IntSet
 import qualified Data.Map                     as Map
 import           Data.Monoid                  (All, Alt, Any, First, Last,
                                                Product, Sum)
+import           Data.Ratio
 import qualified Data.Sequence                as Seq
 import qualified Data.Set                     as Set
 import qualified Data.Text                    as T
@@ -40,7 +44,11 @@ import qualified Data.Text.Encoding           as T
 import qualified Data.Text.Lazy               as TL
 import           Data.Word
 
+-- Generic function
+
+-- | Type class for generic representations
 class GPretty f where
+  -- | Pretty print a `Generic`` value
   gprettyPrec :: Int -> f a -> [Doc]
 
 instance GPretty V1 where
@@ -79,34 +87,46 @@ instance (GPretty f, GPretty g) => GPretty (f :+: g) where
 instance (GPretty f, GPretty g) => GPretty (f :*: g) where
   gprettyPrec p (a :*: b) = gprettyPrec p a ++ gprettyPrec p b
 
+-- Wrapper function
+
+-- | Type class for pretty printing
 class Pretty a where
+  -- | Pretty print a value to `Doc`
   prettyPrec :: Int -> a -> Doc
   default prettyPrec :: (Generic a, GPretty (Rep a)) => Int -> a -> Doc
   prettyPrec p = sep . gprettyPrec p . from
 
--- utility functions
+-- Utility functions
 
+-- | Pretty print a value with decoration
 pretty :: Pretty a => a -> Doc
 pretty = prettyPrec 0
 
+-- | Pretty print a value to `String`
 prettyShow :: Pretty a => a -> String
 prettyShow = show . pretty
 
+-- | Pretty print a value to `stdout`
 prettyPrint :: Pretty a => a -> IO ()
 prettyPrint = hPrettyPrint stdout
 
+-- | Pretty print a value
 hPrettyPrint :: Pretty a => Handle -> a -> IO ()
 hPrettyPrint h = hPutDoc h . (<> hardline) . pretty
 
+-- | Pretty print a value without decoration
 pretty' :: Pretty a => a -> Doc
 pretty' = plain . pretty
 
+-- | Plain version for `prettyShow`
 prettyShow' :: Pretty a => a -> String
 prettyShow' = show . pretty'
 
+-- | Plain version for `prettyPrint`
 prettyPrint' :: Pretty a => a -> IO ()
 prettyPrint' = hPrettyPrint' stdout
 
+-- | Plain version for `hPrettyPrint`
 hPrettyPrint' :: Pretty a => Handle -> a -> IO ()
 hPrettyPrint' h = hPutDoc h . (<> hardline) . pretty'
 
@@ -130,6 +150,14 @@ instance Pretty Int8    where prettyPrec _ = text . show
 instance Pretty Int16   where prettyPrec _ = text . show
 instance Pretty Int32   where prettyPrec _ = text . show
 instance Pretty Int64   where prettyPrec _ = text . show
+
+instance (Integral a, Pretty a) => Pretty (Ratio a) where
+  prettyPrec _ r =
+    pretty (numerator r) <+> char '%' <+> pretty (denominator r)
+
+instance (Pretty a) => Pretty (Complex a) where
+  prettyPrec _ (r :+ i) =
+    pretty r <+> text ":+" <+> pretty i
 
 instance {-# OVERLAPPABLE #-} Pretty a => Pretty [a] where
   prettyPrec _ = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty
