@@ -12,7 +12,7 @@
 module Text.PrettyPrint.Generic (
   Pretty(..),
   GPretty(..),
-  showPretty,
+  pretty, showPretty,
   ) where
 
 import           GHC.Exts                     (IsList (..))
@@ -38,90 +38,96 @@ import qualified Data.Text.Lazy               as TL
 import           Data.Word
 
 class GPretty f where
-  gpretty :: f a -> [Doc]
+  gprettyPrec :: Int -> f a -> [Doc]
 
 instance GPretty V1 where
-  gpretty _ = error "this never happen"
+  gprettyPrec _ _ = error "this never happen"
 
 instance GPretty U1 where
-  gpretty U1 = []
+  gprettyPrec _ U1 = []
 
 instance Pretty c => GPretty (Rec0 c) where
-  gpretty (K1 c) = [pretty c]
+  gprettyPrec p (K1 c) = [prettyPrec p c]
 
 instance GPretty f => GPretty (D1 d f) where
-  gpretty (M1 a) = gpretty a
+  gprettyPrec p (M1 a) = gprettyPrec p a
 
 instance (GPretty f, Constructor c) => GPretty (C1 c f) where
-  gpretty c@(M1 a)
+  gprettyPrec p c@(M1 a)
     | conIsRecord c =
-      [ bold (text (conName c)) <+>
-        encloseSep (lbrace <> space) (space <> rbrace) (comma <> space) (gpretty a) ]
-    | otherwise =
-      [ parens $ bold (text (conName c)) <+> sep (gpretty a) ]
+      [ con <+> encloseSep (lbrace <> space) (space <> rbrace) (comma <> space) es ]
+    | null es      = [ con ]
+    | p == 0       = [ con <+> sep es ]
+    | otherwise    = [ parens $ con <+> sep es ]
+    where
+      con = bold (text (conName c))
+      es = gprettyPrec (p + 1) a
 
 instance {-# OVERLAPPABLE #-} (GPretty f, Selector s) => GPretty (S1 s f) where
-  gpretty s@(M1 a) =
-    [ underline (text (selName s)) <+> text "=" <+> sep (gpretty a) ]
+  gprettyPrec _ s@(M1 a) =
+    [ underline (text (selName s)) <+> text "=" <+> sep (gprettyPrec 0 a) ]
 instance {-# OVERLAPPING #-} GPretty f => GPretty (S1 NoSelector f) where
-  gpretty (M1 a) = gpretty a
+  gprettyPrec p (M1 a) = gprettyPrec p a
 
 instance (GPretty f, GPretty g) => GPretty (f :+: g) where
-  gpretty (L1 a) = gpretty a
-  gpretty (R1 a) = gpretty a
+  gprettyPrec p (L1 a) = gprettyPrec p a
+  gprettyPrec p (R1 a) = gprettyPrec p a
 
 instance (GPretty f, GPretty g) => GPretty (f :*: g) where
-  gpretty (a :*: b) = gpretty a ++ gpretty b
+  gprettyPrec p (a :*: b) = gprettyPrec p a ++ gprettyPrec p b
 
 class Pretty a where
-  pretty :: a -> Doc
-  default pretty :: (Generic a, GPretty (Rep a)) => a -> Doc
-  pretty = sep . gpretty . from
+  prettyPrec :: Int -> a -> Doc
+  default prettyPrec :: (Generic a, GPretty (Rep a)) => Int -> a -> Doc
+  prettyPrec p = sep . gprettyPrec p . from
+
+pretty :: Pretty a => a -> Doc
+pretty = prettyPrec 0
 
 showPretty :: Pretty a => a -> String
 showPretty = show . pretty
 
-instance Pretty ()      where pretty = text . show
-instance Pretty Char    where pretty = text . show
-instance Pretty Int     where pretty = text . show
-instance Pretty Integer where pretty = text . show
-instance Pretty Float   where pretty = text . show
-instance Pretty Double  where pretty = text . show
-instance Pretty Bool    where pretty = text . show
+instance Pretty ()      where prettyPrec _ = text . show
+instance Pretty Char    where prettyPrec _ = text . show
+instance Pretty Int     where prettyPrec _ = text . show
+instance Pretty Integer where prettyPrec _ = text . show
+instance Pretty Float   where prettyPrec _ = text . show
+instance Pretty Double  where prettyPrec _ = text . show
+instance Pretty Bool    where prettyPrec _ = text . show
 
-instance Pretty Word    where pretty = text . show
-instance Pretty Word8   where pretty = text . show
-instance Pretty Word16  where pretty = text . show
-instance Pretty Word32  where pretty = text . show
-instance Pretty Word64  where pretty = text . show
+instance Pretty Word    where prettyPrec _ = text . show
+instance Pretty Word8   where prettyPrec _ = text . show
+instance Pretty Word16  where prettyPrec _ = text . show
+instance Pretty Word32  where prettyPrec _ = text . show
+instance Pretty Word64  where prettyPrec _ = text . show
 
-instance Pretty Int8    where pretty = text . show
-instance Pretty Int16   where pretty = text . show
-instance Pretty Int32   where pretty = text . show
-instance Pretty Int64   where pretty = text . show
+instance Pretty Int8    where prettyPrec _ = text . show
+instance Pretty Int16   where prettyPrec _ = text . show
+instance Pretty Int32   where prettyPrec _ = text . show
+instance Pretty Int64   where prettyPrec _ = text . show
 
 instance {-# OVERLAPPABLE #-} Pretty a => Pretty [a] where
-  pretty = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty
+  prettyPrec _ = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty
 instance {-# OVERLAPPING #-} Pretty String where
-  pretty = text . show
+  prettyPrec p = text . show
 
 instance (Pretty a, Pretty b) => Pretty (a, b) where
-  pretty (a, b) = parens $ pretty a <> comma <+> pretty b
+  prettyPrec _ (a, b) = parens $ pretty a <> comma <+> pretty b
 
 instance (Pretty a, Pretty b, Pretty c) => Pretty (a, b, c) where
-  pretty (a, b, c) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c
+  prettyPrec _ (a, b, c) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c
 
 instance (Pretty a, Pretty b, Pretty c, Pretty d) => Pretty (a, b, c, d) where
-  pretty (a, b, c, d) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d
+  prettyPrec _ (a, b, c, d) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d
 
 instance (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e) => Pretty (a, b, c, d, e) where
-  pretty (a, b, c, d, e) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e
+  prettyPrec _ (a, b, c, d, e) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e
 
 instance (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e, Pretty f) => Pretty (a, b, c, d, e, f) where
-  pretty (a, b, c, d, e, f) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e <> comma <+> pretty f
+  prettyPrec _ (a, b, c, d, e, f) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e <> comma <+> pretty f
 
 instance (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e, Pretty f, Pretty g) => Pretty (a, b, c, d, e, f, g) where
-  pretty (a, b, c, d, e, f, g) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e <> comma <+> pretty f <> comma <+> pretty g
+  prettyPrec _ (a, b, c, d, e, f, g) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e <> comma <+> pretty f <> comma <+> pretty g
 
 instance Pretty a => Pretty (Maybe a)
 instance (Pretty a, Pretty b) => Pretty (Either a b)
@@ -142,36 +148,36 @@ instance Pretty (a b c) => Pretty (WrappedArrow a b c)
 -- bytestrings, texts
 
 instance Pretty S.ByteString where
-  pretty bs = case T.decodeUtf8' bs of
+  prettyPrec _ bs = case T.decodeUtf8' bs of
     Left err -> pretty $ show err
     Right t -> pretty t
 
 instance Pretty T.Text where
-  pretty = pretty . T.unpack
+  prettyPrec _ = pretty . T.unpack
 
 instance Pretty L.ByteString where
-  pretty = pretty . L.toStrict
+  prettyPrec _ = pretty . L.toStrict
 
 instance Pretty TL.Text where
-  pretty = pretty . TL.toStrict
+  prettyPrec _ = pretty . TL.toStrict
 
 -- containers
 
 instance (Pretty a, Ord a) => Pretty (Set.Set a) where
-  pretty = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty . toList
+  prettyPrec _ = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty . toList
 
 instance Pretty IntSet.IntSet where
-  pretty = pretty . Set.fromList . toList
+  prettyPrec _ = pretty . Set.fromList . toList
 
 instance (Pretty a, Pretty b, Ord a) => Pretty (Map.Map a b) where
-  pretty = encloseSep (lbrace <> space) (space <> rbrace) (comma <> space) . map f . toList where
+  prettyPrec _ = encloseSep (lbrace <> space) (space <> rbrace) (comma <> space) . map f . toList where
     f (key, val) = pretty key <> colon <+> pretty val
 
 instance Pretty b => Pretty (IntMap.IntMap b) where
-  pretty = pretty . Map.fromList . toList
+  prettyPrec _ = pretty . Map.fromList . toList
 
 instance Pretty a => Pretty (Seq.Seq a) where
-  pretty = pretty . toList
+  prettyPrec _ = pretty . toList
 
 -- tests
 
@@ -201,6 +207,7 @@ test = do
   putStrLn $ showPretty ('a', 'b', 'c', 'd', 'e', 'f')
   putStrLn $ showPretty ('a', 'b', 'c', 'd', 'e', 'f', 'g')
 
+  putStrLn $ showPretty (Nothing :: Maybe Int)
   putStrLn $ showPretty (Just 123 :: Maybe Int)
   putStrLn $ showPretty (Just (Just 1) :: Maybe (Maybe Int))
   putStrLn $ showPretty (Left "Left" :: Either String Double)
