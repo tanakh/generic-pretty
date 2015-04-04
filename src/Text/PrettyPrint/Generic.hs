@@ -44,11 +44,20 @@ import qualified Data.Text.Encoding           as T
 import qualified Data.Text.Lazy               as TL
 import           Data.Word
 
+-- Color scheme
+
+constructorS, numericS, stringS, operatorS, selectorS :: Doc -> Doc
+constructorS = underline . bold . dullgreen
+numericS = magenta
+stringS = dullyellow
+operatorS = dullred
+selectorS = blue
+
 -- Generic function
 
 -- | Type class for generic representations
 class GPretty f where
-  -- | Pretty print a `Generic`` value
+  -- | Pretty print a `Generic` value
   gprettyPrec :: Int -> f a -> [Doc]
 
 instance GPretty V1 where
@@ -71,12 +80,12 @@ instance (GPretty f, Constructor c) => GPretty (C1 c f) where
     | p == 0       = [ con <+> sep es ]
     | otherwise    = [ parens $ con <+> sep es ]
     where
-      con = bold (text (conName c))
+      con = constructorS $ text (conName c)
       es = gprettyPrec (p + 1) a
 
 instance {-# OVERLAPPABLE #-} (GPretty f, Selector s) => GPretty (S1 s f) where
   gprettyPrec _ s@(M1 a) =
-    [ underline (text (selName s)) <+> text "=" <+> sep (gprettyPrec 0 a) ]
+    [ selectorS (text (selName s)) <+> operatorS (text "=") <+> sep (gprettyPrec 0 a) ]
 instance {-# OVERLAPPING #-} GPretty f => GPretty (S1 NoSelector f) where
   gprettyPrec p (M1 a) = gprettyPrec p a
 
@@ -133,37 +142,37 @@ hPrettyPrint' h = hPutDoc h . (<> hardline) . pretty'
 -- instances
 
 instance Pretty ()      where prettyPrec _ = text . show
-instance Pretty Char    where prettyPrec _ = text . show
-instance Pretty Int     where prettyPrec _ = text . show
-instance Pretty Integer where prettyPrec _ = text . show
-instance Pretty Float   where prettyPrec _ = text . show
-instance Pretty Double  where prettyPrec _ = text . show
-instance Pretty Bool    where prettyPrec _ = text . show
+instance Pretty Char    where prettyPrec _ = stringS . text . show
+instance Pretty Int     where prettyPrec _ = numericS . text . show
+instance Pretty Integer where prettyPrec _ = numericS . text . show
+instance Pretty Float   where prettyPrec _ = numericS . text . show
+instance Pretty Double  where prettyPrec _ = numericS . text . show
+instance Pretty Bool    where prettyPrec _ = numericS . text . show
 
-instance Pretty Word    where prettyPrec _ = text . show
-instance Pretty Word8   where prettyPrec _ = text . show
-instance Pretty Word16  where prettyPrec _ = text . show
-instance Pretty Word32  where prettyPrec _ = text . show
-instance Pretty Word64  where prettyPrec _ = text . show
+instance Pretty Word    where prettyPrec _ = numericS . text . show
+instance Pretty Word8   where prettyPrec _ = numericS . text . show
+instance Pretty Word16  where prettyPrec _ = numericS . text . show
+instance Pretty Word32  where prettyPrec _ = numericS . text . show
+instance Pretty Word64  where prettyPrec _ = numericS . text . show
 
-instance Pretty Int8    where prettyPrec _ = text . show
-instance Pretty Int16   where prettyPrec _ = text . show
-instance Pretty Int32   where prettyPrec _ = text . show
-instance Pretty Int64   where prettyPrec _ = text . show
+instance Pretty Int8    where prettyPrec _ = numericS . text . show
+instance Pretty Int16   where prettyPrec _ = numericS . text . show
+instance Pretty Int32   where prettyPrec _ = numericS . text . show
+instance Pretty Int64   where prettyPrec _ = numericS . text . show
 
 instance (Integral a, Pretty a) => Pretty (Ratio a) where
   prettyPrec _ r =
-    pretty (numerator r) <+> char '%' <+> pretty (denominator r)
+    pretty (numerator r) <+> operatorS (char '%') <+> pretty (denominator r)
 
 instance (Pretty a) => Pretty (Complex a) where
   prettyPrec _ (r :+ i) =
-    pretty r <+> text ":+" <+> pretty i
+    pretty r <+> operatorS (text ":+") <+> pretty i
 
 instance {-# OVERLAPPABLE #-} Pretty a => Pretty [a] where
   prettyPrec _ = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty
 
 instance {-# OVERLAPPING #-} Pretty String where
-  prettyPrec _ = dquotes . text . prettyString where
+  prettyPrec _ = stringS . dquotes . text . prettyString where
     prettyString cs = foldr ((.) . prettyChar) id cs ""
     prettyChar c
       | fromEnum c < 0x80 = showChar c
@@ -255,6 +264,10 @@ test = do
   prettyPrint (pi :: Double)
   prettyPrint ("Hello" :: String)
   prettyPrint True
+
+  prettyPrint (123 % 456 :: Rational)
+  prettyPrint (123 :+ 456 :: Complex Double)
+
   prettyPrint ([1..5] :: [Int])
   prettyPrint ([1..10] :: [Int])
 
