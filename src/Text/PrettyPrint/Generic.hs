@@ -13,6 +13,13 @@ module Text.PrettyPrint.Generic (
   showPretty,
   ) where
 
+import           Control.Applicative          (Const, WrappedArrow,
+                                               WrappedMonad, ZipList)
+import           Data.Functor.Identity        (Identity)
+import           Data.Int
+import           Data.Monoid                  (All, Alt, Any, First, Last,
+                                               Product, Sum)
+import           Data.Word
 import           GHC.Generics
 import           Text.PrettyPrint.ANSI.Leijen hiding (Pretty (..))
 
@@ -68,6 +75,17 @@ instance Pretty Float   where pretty = text . show
 instance Pretty Double  where pretty = text . show
 instance Pretty Bool    where pretty = text . show
 
+instance Pretty Word    where pretty = text . show
+instance Pretty Word8   where pretty = text . show
+instance Pretty Word16  where pretty = text . show
+instance Pretty Word32  where pretty = text . show
+instance Pretty Word64  where pretty = text . show
+
+instance Pretty Int8    where pretty = text . show
+instance Pretty Int16   where pretty = text . show
+instance Pretty Int32   where pretty = text . show
+instance Pretty Int64   where pretty = text . show
+
 instance {-# OVERLAPPABLE #-} Pretty a => Pretty [a] where
   pretty = encloseSep (lbracket <> space) (space <> rbracket) (comma <> space) . map pretty
 instance {-# OVERLAPPING #-} Pretty String where
@@ -93,6 +111,21 @@ instance (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e, Pretty f, Pretty g) 
 
 instance Pretty a => Pretty (Maybe a)
 instance (Pretty a, Pretty b) => Pretty (Either a b)
+instance Pretty Ordering
+instance Pretty Any
+instance Pretty All
+instance Pretty a => Pretty (First a)
+instance Pretty a => Pretty (Last a)
+instance Pretty a => Pretty (Sum a)
+instance Pretty a => Pretty (Product a)
+instance Pretty (f a) => Pretty (Alt f a)
+instance Pretty a => Pretty (Identity a)
+instance Pretty a => Pretty (Const a b)
+instance Pretty a => Pretty (ZipList a)
+instance Pretty (m a) => Pretty (WrappedMonad m a)
+instance Pretty (a b c) => Pretty (WrappedArrow a b c)
+
+-- tests
 
 data Foo = Foo { fooA :: Int, fooB :: String } deriving Generic
 instance Pretty Foo
