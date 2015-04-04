@@ -73,11 +73,32 @@ instance {-# OVERLAPPABLE #-} Pretty a => Pretty [a] where
 instance {-# OVERLAPPING #-} Pretty String where
   pretty = text . show
 
+instance (Pretty a, Pretty b) => Pretty (a, b) where
+  pretty (a, b) = parens $ pretty a <> comma <+> pretty b
+
+instance (Pretty a, Pretty b, Pretty c) => Pretty (a, b, c) where
+  pretty (a, b, c) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c
+
+instance (Pretty a, Pretty b, Pretty c, Pretty d) => Pretty (a, b, c, d) where
+  pretty (a, b, c, d) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d
+
+instance (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e) => Pretty (a, b, c, d, e) where
+  pretty (a, b, c, d, e) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e
+
+instance (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e, Pretty f) => Pretty (a, b, c, d, e, f) where
+  pretty (a, b, c, d, e, f) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e <> comma <+> pretty f
+
+instance (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e, Pretty f, Pretty g) => Pretty (a, b, c, d, e, f, g) where
+  pretty (a, b, c, d, e, f, g) = parens $ pretty a <> comma <+> pretty b <> comma <+> pretty c <> comma <+> pretty d <> comma <+> pretty e <> comma <+> pretty f <> comma <+> pretty g
+
 instance Pretty a => Pretty (Maybe a)
 instance (Pretty a, Pretty b) => Pretty (Either a b)
 
 data Foo = Foo { fooA :: Int, fooB :: String } deriving Generic
 instance Pretty Foo
+
+data Bar a = Bar { barA :: Foo, barB :: a } deriving Generic
+instance Pretty a => Pretty (Bar a)
 
 test :: IO ()
 test = do
@@ -92,9 +113,17 @@ test = do
   putStrLn $ showPretty ([1..5] :: [Int])
   putStrLn $ showPretty ([1..10] :: [Int])
 
+  putStrLn $ showPretty ('a', 'b')
+  putStrLn $ showPretty ('a', 'b', 'c')
+  putStrLn $ showPretty ('a', 'b', 'c', 'd')
+  putStrLn $ showPretty ('a', 'b', 'c', 'd', 'e')
+  putStrLn $ showPretty ('a', 'b', 'c', 'd', 'e', 'f')
+  putStrLn $ showPretty ('a', 'b', 'c', 'd', 'e', 'f', 'g')
+
   putStrLn $ showPretty (Just 123 :: Maybe Int)
   putStrLn $ showPretty (Just (Just 1) :: Maybe (Maybe Int))
   putStrLn $ showPretty (Left "Left" :: Either String Double)
   putStrLn $ showPretty (Right pi :: Either String Double)
 
   putStrLn $ showPretty (Foo 123 "foo")
+  putStrLn $ showPretty (Bar (Foo 123 "foo") (Just True))
