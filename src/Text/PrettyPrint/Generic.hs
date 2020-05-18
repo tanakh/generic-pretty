@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE DefaultSignatures    #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
@@ -89,7 +90,7 @@ instance (GPretty f, Constructor c) => GPretty (C1 c f) where
 instance {-# OVERLAPPABLE #-} (GPretty f, Selector s) => GPretty (S1 s f) where
   gprettyPrec _ s@(M1 a) =
     [ selectorS (text (selName s)) <+> operatorS (text "=") <+> sep (gprettyPrec 0 a) ]
-instance {-# OVERLAPPING #-} GPretty f => GPretty (S1 NoSelector f) where
+instance {-# OVERLAPPING #-} GPretty f => GPretty (S1 ('MetaSel 'Nothing su ss ds) f) where
   gprettyPrec p (M1 a) = gprettyPrec p a
 
 instance (GPretty f, GPretty g) => GPretty (f :+: g) where
